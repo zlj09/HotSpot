@@ -367,11 +367,21 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
       j1 = tolerant_floor(lu/cw);
       /* right index = ceil (rightx / cell width)	*/
       j2 = tolerant_ceil(ru/cw);
+
+	  /* printf("Debug: bu = %f, ru = %f\n", bu, ru); */
+	  /* printf("Debug: ch = %f, cw = %f\n", ch, cw); */
+	  /* printf("Debug: i2 = %d, j2 = %d\n", i2, j2); */
       /* sanity check	*/
       if((i1 < 0) || (j1 < 0))
         fatal("negative grid cell start index!\n");
-      if((i2 > model->rows) || (j2 > model->cols))
-        fatal("grid cell end index out of bounds!\n");
+      if((i2 > model->rows) || (j2 > model->cols)) {
+		fatal("grid cell end index out of bounds!\n");
+		// Allow the error caused by float accuracy, modified by Lingjun Zhu on July 12, 2021
+		  /* if (i2 > model->rows) */
+			  /* i2 = model->rows - 1; */
+		  /* if (j2 > model->cols) */
+			  /* j2 = model->cols - 1; */
+	  }
       if((i1 >= i2) || (j1 >= j2))
         fatal("invalid floorplan spec or grid resolution\n");
 
@@ -737,9 +747,12 @@ void parse_layer_file(grid_model_t *model, FILE *fp, materials_list_t *materials
           if (count < LCF_NPARAMS) {
               model->width = get_total_width(model->layers[i].flp);
               model->height = get_total_height(model->layers[i].flp);
+			  printf("Debug: Layer %d, width = %f, height = %f\n", count, model->width, model->height);
           } else if(!eq(model->width, get_total_width(model->layers[i].flp)) ||
-                    !eq(model->height, get_total_height(model->layers[i].flp)))
+                    !eq(model->height, get_total_height(model->layers[i].flp))) {
+			  printf("Debug: Layer %d, width = %f, height = %f\n", count, get_total_width(model->layers[i].flp), get_total_height(model->layers[i].flp));
             fatal("width and height differ across layers\n");
+		  }
           field = LCF_SNO;
           break;
         default:

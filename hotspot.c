@@ -218,10 +218,13 @@ int read_vals(FILE *fp, double *vals)
   char line[LINE_SIZE], temp[LINE_SIZE], *src;
   int i;
 
+  printf("Debug: read_vals\n");
+
   /* skip empty lines	*/
   do {
       /* read the entire line	*/
       fgets(line, LINE_SIZE, fp);
+	  /* printf("Debug: line: %s\n", line); */
       if (feof(fp))
         return 0;
       strcpy(temp, line);
@@ -231,6 +234,8 @@ int read_vals(FILE *fp, double *vals)
   /* new line not read yet	*/
   if(line[strlen(line)-1] != '\n')
     fatal("line too long\n");
+
+  /* printf("Debug: line = %s\n", *line); */
 
   /* chop the power values from the line read	*/
   for(i=0,src=line; *src && i < MAX_UNITS; i++) {
@@ -566,6 +571,7 @@ int main(int argc, char **argv)
 
   /* read the instantaneous power trace	*/
   vals = dvector(MAX_UNITS);
+  printf("Debug: Start while\n");
   while ((num=read_vals(pin, vals)) != 0) {
       if(num != n)
         fatal("invalid trace file format\n");
@@ -646,6 +652,7 @@ int main(int argc, char **argv)
 
       lines++;
   }
+  printf("Debug: End while\n");
   if(!lines)
     fatal("no power numbers in trace file\n");
 
