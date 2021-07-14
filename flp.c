@@ -1391,6 +1391,7 @@ int get_blk_index(flp_t *flp, char *name)
 		fatal("null pointer in get_blk_index\n");
 
 	for (i = 0; i < flp->n_units; i++) {
+		/* printf("Debug: strcasecmp %s vs. %s\n", name, flp->units[i].name); */
     if (!strcasecmp(name, flp->units[i].name)) {
 			return i;
 		}

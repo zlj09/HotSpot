@@ -201,8 +201,10 @@ blist_t *new_blist(int idx, double occupancy, double res, double specificHeat,in
   /*BU_3D:
    * - If occupancy is greater than OCCUPANCY_THRESHOLD% lock in thermal resistance values
    * - Else assume 50/50 occupancy*/
+// 	printf("Debug: assign blist_t ptr = %x\n" , ptr);
   if(first && do_detailed_3D){
       if(occupancy >= OCCUPANCY_THRESHOLD){
+// 		  printf("Debug: >= OCCUPANCY_THRESHOLD\n");
           ptr->lock=TRUE;
           ptr->rx =  getr(1/res, cw, ch * thickness);
           ptr->ry =  getr(1/res, ch, cw * thickness);
@@ -211,12 +213,17 @@ blist_t *new_blist(int idx, double occupancy, double res, double specificHeat,in
           //fprintf(stderr, "1/res = %e, cw = %e, ch = %e, thickness = %e, occupancy = %e\n", 1/res, cw, ch, thickness, occupancy);
       }
       else{
+// 		  printf("Debug: < OCCUPANCY_THRESHOLD\n");
           ptr->lock=FALSE;
+// 		  printf("Debug: ptr->loack = %d\n", ptr->lock);
           ptr->rx = 1 / ((1 / getr(1 / res, cw, ch * thickness)) * occupancy);
+// 		  printf("Debug: ptr->rx = %f\n", ptr->rx);
           ptr->ry = 1 / ((1 / getr(1 / res, ch, cw * thickness)) * occupancy);
           ptr->rz = 1 / ((1 / getr(1 / res, thickness, cw * ch)) * occupancy);
           ptr->capacitance = getcap(specificHeat, thickness, cw * ch);
       }
+
+// 		printf("Debug: return blist_t ptr = %x\n" , ptr);
       return ptr;
   }
   /*end->BU_3D*/
@@ -353,6 +360,7 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
 
   /* for each functional unit	*/
   for(u=0; u < layer->flp->n_units; u++) {
+// 					printf("Debug: Start for 3\n");
       /* shortcuts for unit boundaries	*/
       double lu = layer->flp->units[u].leftx;
       double ru = lu + layer->flp->units[u].width;
@@ -368,9 +376,10 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
       /* right index = ceil (rightx / cell width)	*/
       j2 = tolerant_ceil(ru/cw);
 
-	  /* printf("Debug: bu = %f, ru = %f\n", bu, ru); */
-	  /* printf("Debug: ch = %f, cw = %f\n", ch, cw); */
-	  /* printf("Debug: i2 = %d, j2 = %d\n", i2, j2); */
+	  /* printf("Debug: model width = %lf, model height = %lf\n", model->width, model->height); */
+	  /* printf("Debug: ru = %lf, bu = %lf\n", ru, bu); */
+	  /* printf("Debug: cw = %lf, ch = %lf\n", cw, ch); */
+	  /* printf("Debug: j2 = %d, i2 = %d\n", j2, i2); */
       /* sanity check	*/
       if((i1 < 0) || (j1 < 0))
         fatal("negative grid cell start index!\n");
@@ -378,12 +387,14 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
 		fatal("grid cell end index out of bounds!\n");
 		// Allow the error caused by float accuracy, modified by Lingjun Zhu on July 12, 2021
 		  /* if (i2 > model->rows) */
-			  /* i2 = model->rows - 1; */
+			  /* i2 = model->rows; */
 		  /* if (j2 > model->cols) */
-			  /* j2 = model->cols - 1; */
+			  /* j2 = model->cols; */
+		  continue;
 	  }
       if((i1 >= i2) || (j1 >= j2))
         fatal("invalid floorplan spec or grid resolution\n");
+// 	  printf("Debug: i2 = %d, j2 = %d\n", i2, j2);
 
       /* setup g2bmap	*/
       layer->g2bmap[u].i1 = i1;
@@ -394,9 +405,12 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
       /* setup b2gmap	*/
       /* for each grid cell in this unit	*/
       for(i=i1; i < i2; i++) {
+// 					printf("Debug: start for 2\n");
           for(j=j1; j < j2; j++) {
+// 					printf("Debug: start for 1\n");
               /* grid cells fully overlapped by this unit	*/
 
+// 			  printf("Debug: i = %d, j = %d\n", i, j);
               /*BU_3D*/
               // - Load values from floorplan into each grid
               if(layer->flp->units[u].hasRes && model->config.detailed_3D_used)
@@ -409,7 +423,11 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
                 sh = layer->sp;
               /*end->BU_3D*/
 
+// 			  printf("Debug: Finish loading values from floorplan");
+
               if ((i > i1) && (i < i2-1) && (j > j1) && (j < j2-1)) {
+// 				  printf("Debug: cell internal\n");
+
                   /* first unit in the list	*/
                   if (!layer->b2gmap[i][j]){
                       layer->b2gmap[i][j] = new_blist(u, 1.0,res,sh,1,model->config.detailed_3D_used,cw,ch,layer->thickness);
@@ -425,6 +443,7 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
                   }
                   /* boundary grid cells partially overlapped by this unit	*/
               } else {
+// 				  printf("Debug: cell boundary\n");
                   /* shortcuts for cell boundaries	*/
                   double lc = j * cw, rc = (j+1) * cw;
                   double tc = model->height - i * ch;
@@ -452,17 +471,28 @@ void set_bgmap(grid_model_t *model, layer_t *layer)
 
                   /* first unit in the list	*/
                   if (!layer->b2gmap[i][j]){
+// 					  printf("Debug: new blist\n");
                       layer->b2gmap[i][j] = new_blist(u, occupancy,res,sh,1,model->config.detailed_3D_used,cw,ch,layer->thickness);
                       layer->b2gmap[i][j]->hasRes = TRUE;//BU_3D assign hasRes to the b2gdata structure
+// 					  printf("Debug: hasRes = %d\n", layer->b2gmap[i][j]->hasRes);
                       layer->b2gmap[i][j]->hasCap = layer->flp->units[u].hasSh;//BU_3D assign hasSh to the b2gdata structure
+// 					  printf("Debug: hasCap = %d\n", layer->b2gmap[i][j]->hasCap);
                   }
-                  else
+                  else {
                     /* append at the end */
+// 					  printf("Debug: append blist\n");
                     blist_append(layer->b2gmap[i][j], u, occupancy,res,sh,0,model->config.detailed_3D_used,cw,ch,layer->thickness);
+				  }
+// 					printf("Debug: End if 1\n");
               }
+// 					printf("Debug: End if 2\n");
           }
+// 					printf("Debug: End for 1\n");
       }
+// 					printf("Debug: End for 2\n");
+// 					printf("Debug: for limit = %d", layer->flp->n_units);
   }
+// 					printf("Debug: End for 3\n");
 }
 
 /* populate default set of layers	*/
@@ -747,10 +777,10 @@ void parse_layer_file(grid_model_t *model, FILE *fp, materials_list_t *materials
           if (count < LCF_NPARAMS) {
               model->width = get_total_width(model->layers[i].flp);
               model->height = get_total_height(model->layers[i].flp);
-			  printf("Debug: Layer %d, width = %f, height = %f\n", count, model->width, model->height);
+// 			  printf("Debug: Layer %d, width = %f, height = %f\n", count, model->width, model->height);
           } else if(!eq(model->width, get_total_width(model->layers[i].flp)) ||
                     !eq(model->height, get_total_height(model->layers[i].flp))) {
-			  printf("Debug: Layer %d, width = %f, height = %f\n", count, get_total_width(model->layers[i].flp), get_total_height(model->layers[i].flp));
+// 			  printf("Debug: Layer %d, width = %f, height = %f\n", count, get_total_width(model->layers[i].flp), get_total_height(model->layers[i].flp));
             fatal("width and height differ across layers\n");
 		  }
           field = LCF_SNO;
